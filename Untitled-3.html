@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BuildYourBite - Meal Delivery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-green-50 to-emerald-50">
+    <div id="app"></div>
+    
+    <script>
+        const state = {
+            isSignedUp: false,
+            showSignUp: false,
+            userProfile: { name: '', email: '', phone: '', diets: [] },
+            selectedDiets: [],
+            cart: [],
+            showFilters: false,
+            showCart: false,
+            selectedCategory: 'all',
+            selectedMeal: null,
+            mealCustomizations: {},
+            mealComments: {},
+            mealQuantity: 1,
+            checkoutStep: null, // 'details', 'payment', 'confirmation'
+            orderDetails: {
+                deliveryAddress: '',
+                deliveryDate: '',
+                deliveryTime: '',
+                specialInstructions: '',
+                paymentMethod: 'card'
+            },
+            lastOrder: null
+        };
+
+        const dietaryFilters = [
+            { id: 'vegan', label: 'Vegan', icon: '🌱', required: false },
+            { id: 'vegetarian', label: 'Vegetarian', icon: '🥕', required: false },
+            { id: 'gluten-free', label: 'Gluten-Free', icon: '🌾' },
+            { id: 'soy-free', label: 'Soy-Free', icon: '🫘' },
+            { id: 'nut-free', label: 'Nut-Free', icon: '🥜' },
+            { id: 'low-sodium', label: 'Low Sodium', icon: '🧂' },
+            { id: 'low-fat', label: 'Low Fat', icon: '💧' },
+            { id: 'dairy-free', label: 'Dairy-Free', icon: '🥛' },
+            { id: 'low-fodmap', label: 'Low-FODMAP', icon: '🔬' },
+            { id: 'oil-free', label: 'Oil-Free', icon: '🫗' }
+        ];
+
+        const meals = [
+            // Vegan Bowls
+            {
+                id: 1,
+                name: "Mediterranean Quinoa Bowl",
+                description: "Fluffy quinoa with roasted vegetables, chickpeas, and tahini dressing",
+                fullDescription: "A nutrient-packed bowl featuring organic quinoa, roasted Mediterranean vegetables (zucchini, bell peppers, eggplant), protein-rich chickpeas, cherry tomatoes, cucumber, and creamy tahini dressing. Topped with fresh parsley and a squeeze of lemon.",
+                price: 12.99,
+                image: "🥗",
+                tags: ["vegan", "vegetarian", "gluten-free", "soy-free", "nut-free", "dairy-free"],
+                calories: "420",
+                protein: "15g",
+                category: "bowls",
+                ingredients: ["Quinoa", "Chickpeas", "Zucchini", "Bell Peppers", "Eggplant", "Tahini", "Lemon", "Parsley", "Olive Oil", "Garlic"],
+                customizations: ["Extra Tahini", "No Chickpeas", "Extra Vegetables", "Spicy Option"]
+            },
+            {
+                id: 2,
+                name: "Thai Green Curry",
+                description: "Creamy coconut curry with tofu, vegetables, and jasmine rice",
+                fullDescription: "Authentic Thai green curry made with coconut milk, lemongrass, and Thai basil. Includes marinated tofu, bamboo shoots, Thai eggplant, green beans, and bell peppers. Served over fragrant jasmine rice.",
+                price: 13.99,
+                image: "🍛",
+                tags: ["vegan", "vegetarian", "gluten-free", "nut-free", "dairy-free"],
+                calories: "480",
+                protein: "18g",
+                category: "bowls",
+                ingredients: ["Tofu", "Coconut Milk", "Thai Basil", "Green Beans", "Bell Peppers", "Jasmine Rice", "Green Curry Paste", "Lemongrass"],
+                customizations: ["Extra Tofu", "Mild Spice", "Extra Spicy", "Brown Rice Instead"]
+            },
+            {
+                id: 3,
+                name: "Mexican Burrito Bowl",
+                description: "Black beans, cilantro lime rice, guacamole, and pico de gallo",
+                fullDescription: "Fresh Tex-Mex flavors in a bowl! Cilantro lime rice topped with seasoned black beans, fresh guacamole, pico de gallo, roasted corn, jalapeños, and a squeeze of lime. Garnished with fresh cilantro.",
+                price: 11.49,
+                image: "🌮",
+                tags: ["vegan", "vegetarian", "gluten-free", "soy-free", "nut-free", "dairy-free", "oil-free"],
+                calories: "440",
+                protein: "17g",
+                category: "bowls",
+                ingredients: ["Black Beans", "Rice", "Avocado", "Tomatoes", "Onions", "Cilantro", "Lime", "Corn", "Jalapeños"],
+                customizations: ["Extra Guacamole", "No Jalapeños", "Extra Beans", "Mild Salsa"]
+            },
+            
+            // Meat Options
+            {
+                id: 17,
+                name: "Grilled Chicken Caesar Salad",
+                description: "Tender grilled chicken breast over romaine with parmesan and croutons",
+                fullDescription: "Classic Caesar salad with perfectly grilled chicken breast, crisp romaine lettuce, shaved parmesan cheese, garlic croutons, and creamy Caesar dressing.",
+                price: 14.99,
+                image: "🥗",
+                tags: ["gluten-free", "low-fodmap"],
+                calories: "520",
+                protein: "42g",
+                category: "meat",
+                ingredients: ["Chicken Breast", "Romaine Lettuce", "Parmesan", "Caesar Dressing", "Croutons", "Lemon"],
+                customizations: ["Extra Chicken", "No Croutons", "Light Dressing", "Add Bacon"]
+            },
+            {
+                id: 18,
+                name: "Beef Teriyaki Bowl",
+                description: "Tender beef strips in teriyaki sauce with vegetables and rice",
+                fullDescription: "Sliced beef marinated and glazed in house-made teriyaki sauce, served over steamed rice with stir-fried broccoli, carrots, and snap peas. Topped with sesame seeds.",
+                price: 16.99,
+                image: "🍱",
+                tags: ["dairy-free", "nut-free"],
+                calories: "620",
+                protein: "38g",
+                category: "meat",
+                ingredients: ["Beef", "Teriyaki Sauce", "Rice", "Broccoli", "Carrots", "Snap Peas", "Sesame Seeds"],
+                customizations: ["Extra Beef", "Brown Rice", "Extra Vegetables", "Less Sauce"]
+            },
+            {
+                id: 19,
+                name: "Salmon & Quinoa Bowl",
+                description: "Pan-seared salmon with quinoa, avocado, and lemon dressing",
+                fullDescription: "Fresh Atlantic salmon fillet pan-seared to perfection, served over fluffy quinoa with avocado, cherry tomatoes, cucumber, and a bright lemon herb dressing.",
+                price: 17.99,
+                image: "🐟",
+                tags: ["gluten-free", "dairy-free"],
+                calories: "580",
+                protein: "35g",
+                category: "meat",
+                ingredients: ["Salmon", "Quinoa", "Avocado", "Cherry Tomatoes", "Cucumber", "Lemon", "Olive Oil", "Herbs"],
+                customizations: ["Extra Salmon", "No Avocado", "Add Greens", "Spicy Option"]
+            },
+            {
+                id: 20,
+                name: "Turkey & Swiss Wrap",
+                description: "Sliced turkey breast with Swiss cheese and fresh vegetables",
+                fullDescription: "Premium turkey breast with Swiss cheese, lettuce, tomatoes, and honey mustard in a whole wheat wrap. Served with a side of sweet potato chips.",
+                price: 12.99,
+                image: "🌯",
+                tags: ["nut-free"],
+                calories: "490",
+                protein: "32g",
+                category: "meat",
+                ingredients: ["Turkey", "Swiss Cheese", "Whole Wheat Wrap", "Lettuce", "Tomato", "Honey Mustard", "Sweet Potato Chips"],
+                customizations: ["Extra Turkey", "No Cheese", "Gluten-Free Wrap", "Add Bacon"]
+            },
+            {
+                id: 21,
+                name: "Steak & Potatoes",
+                description: "Grass-fed sirloin steak with herb roasted potatoes",
+                fullDescription: "8oz grass-fed sirloin steak cooked to your preference, served with herb-roasted baby potatoes and sautéed green beans. Topped with garlic butter.",
+                price: 19.99,
+                image: "🥩",
+                tags: ["gluten-free"],
+                calories: "680",
+                protein: "48g",
+                category: "meat",
+                ingredients: ["Sirloin Steak", "Baby Potatoes", "Green Beans", "Garlic Butter", "Herbs", "Black Pepper"],
+                customizations: ["Extra Steak", "Mashed Potatoes", "No Butter", "Add Mushrooms"]
+            },
+            {
+                id: 22,
+                name: "Chicken Parmesan",
+                description: "Breaded chicken breast with marinara and melted mozzarella",
+                fullDescription: "Golden breaded chicken breast topped with rich marinara sauce and melted mozzarella cheese. Served over spaghetti with fresh basil.",
+                price: 15.99,
+                image: "🍝",
+                tags: ["nut-free"],
+                calories: "720",
+                protein: "45g",
+                category: "meat",
+                ingredients: ["Chicken Breast", "Mozzarella", "Marinara Sauce", "Spaghetti", "Parmesan", "Basil", "Breadcrumbs"],
+                customizations: ["Extra Cheese", "Gluten-Free Pasta", "Light Sauce", "Add Garlic Bread"]
+            },
+            {
+                id: 23,
+                name: "BBQ Pork Ribs",
+                description: "Slow-cooked pork ribs with smoky BBQ sauce",
+                fullDescription: "Fall-off-the-bone pork ribs slow-cooked and basted with our signature BBQ sauce. Served with coleslaw and cornbread.",
+                price: 18.99,
+                image: "🍖",
+                tags: ["dairy-free"],
+                calories: "820",
+                protein: "52g",
+                category: "meat",
+                ingredients: ["Pork Ribs", "BBQ Sauce", "Coleslaw", "Cornbread", "Spices"],
+                customizations: ["Extra Ribs", "Extra Sauce", "Side Salad", "No Cornbread"]
+            },
+            {
+                id: 24,
+                name: "Shrimp Scampi",
+                description: "Garlic butter shrimp with linguine and white wine sauce",
+                fullDescription: "Succulent shrimp sautéed in garlic butter and white wine, tossed with linguine pasta. Finished with lemon, parsley, and parmesan.",
+                price: 16.99,
+                image: "🍤",
+                tags: ["nut-free"],
+                calories: "590",
+                protein: "34g",
+                category: "meat",
+                ingredients: ["Shrimp", "Linguine", "Garlic", "Butter", "White Wine", "Lemon", "Parsley", "Parmesan"],
+                customizations: ["Extra Shrimp", "Gluten-Free Pasta", "Light Butter", "Spicy Option"]
+            },
+            
+            // Plant-Based Meat Alternatives
+            {
+                id: 9,
+                name: "Beyond Burger Deluxe",
+                description: "Plant-based burger patty with lettuce, tomato, pickles, and special sauce",
+                fullDescription: "Juicy Beyond Meat burger patty on a toasted brioche bun with crisp lettuce, ripe tomatoes, crunchy pickles, red onions, and our house-made special sauce. Served with a side of sweet potato fries.",
+                price: 14.99,
+                image: "🍔",
+                tags: ["vegan", "vegetarian", "dairy-free"],
+                calories: "520",
+                protein: "22g",
+                category: "plant-based",
+                ingredients: ["Beyond Burger", "Brioche Bun", "Lettuce", "Tomato", "Pickles", "Onions", "Special Sauce", "Sweet Potato Fries"],
+                customizations: ["No Pickles", "Extra Patty", "Gluten-Free Bun", "Add Vegan Cheese", "No Onions"]
+            },
+            {
+                id: 10,
+                name: "BBQ Pulled Jackfruit Sandwich",
+                description: "Tender jackfruit in smoky BBQ sauce with coleslaw",
+                fullDescription: "Slow-cooked young jackfruit shredded and tossed in smoky BBQ sauce, piled high on a soft whole wheat bun. Topped with crunchy coleslaw and served with crispy baked potato wedges.",
+                price: 12.99,
+                image: "🥪",
+                tags: ["vegan", "vegetarian", "soy-free", "nut-free", "dairy-free"],
+                calories: "450",
+                protein: "12g",
+                category: "plant-based",
+                ingredients: ["Jackfruit", "BBQ Sauce", "Whole Wheat Bun", "Coleslaw", "Potato Wedges", "Apple Cider Vinegar"],
+                customizations: ["Extra BBQ Sauce", "No Coleslaw", "Gluten-Free Bun", "Side Salad Instead"]
+            }
+        ];
+
+        function getFilteredMeals() {
+            return meals.filter(meal => {
+                const matchesDiet = state.selectedDiets.length === 0 || state.selectedDiets.every(diet => meal.tags.includes(diet));
+                const matchesCategory = state.selectedCategory === 'all' || meal.category === state.selectedCategory;
+                return matchesDiet && matchesCategory;
+            });
+        }
+
+        function getCartTotal() {
+            return state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        }
+
+        function getCartCount() {
+            return state.cart.reduce((sum, item) => sum + item.quantity, 0);
+        }
+
+        function addToCart(mealId, fromDetailPage = false) {
+            const meal = meals.find(m => m.id === mealId);
+            const customization = state.mealCustomizations[meal.id] || {};
+            const comment = state.mealComments[meal.id] || '';
+            const quantity = fromDetailPage ? state.mealQuantity : 1;
+            
+            const customStr = JSON.stringify(customization);
+            const existing = state.cart.find(item => 
+                item.id === meal.id && JSON.stringify(item.customization) === customStr
+            );
+            
+            if (existing) {
+                existing.quantity += quantity;
+            } else {
+                state.cart.push({ ...meal, quantity, customization, comment });
+            }
+            
+            if (fromDetailPage) {
+                state.selectedMeal = null;
+                state.mealQuantity = 1;
+                state.mealCustomizations[meal.id] = {};
+                state.mealComments[meal.id] = '';
+            }
+            
+            render();
+        }
+
+        function removeFromCart(index) {
+            state.cart.splice(index, 1);
+            render();
+        }
+
+        function updateQuantity(index, newQuantity) {
+            if (newQuantity <= 0) {
+                removeFromCart(index);
+            } else {
+                state.cart[index].quantity = newQuantity;
+                render();
+            }
+        }
+
+        function toggleCustomization(mealId, option) {
+            if (!state.mealCustomizations[mealId]) {
+                state.mealCustomizations[mealId] = {};
+            }
+            state.mealCustomizations[mealId][option] = !state.mealCustomizations[mealId][option];
+        }
+
+        function toggleDiet(dietId) {
+            if (state.userProfile.diets.includes(dietId)) {
+                state.userProfile.diets = state.userProfile.diets.filter(d => d !== dietId);
+            } else {
+                state.userProfile.diets.push(dietId);
+            }
+            render();
+        }
+
+        function toggleDietFilter(dietId) {
+            if (state.selectedDiets.includes(dietId)) {
+                state.selectedDiets = state.selectedDiets.filter(d => d !== dietId);
+            } else {
+                state.selectedDiets.push(dietId);
+            }
+            render();
+        }
+
+        function proceedToCheckout() {
+            state.showCart = false;
+            state.checkoutStep = 'details';
+            render();
+        }
+
+        function completeOrder() {
+            const orderNumber = 'BYB-' + Date.now().toString().slice(-8);
+            const orderTotal = getCartTotal();
+            const deliveryFee = 4.99;
+            const tax = orderTotal * 0.10;
+            const total = orderTotal + deliveryFee + tax;
+            
+            state.lastOrder = {
+                orderNumber,
+                items: [...state.cart],
+                orderTotal,
+                deliveryFee,
+                tax,
+                total,
+                details: {...state.orderDetails},
+                userInfo: {...state.userProfile},
+                orderDate: new Date().toISOString()
+            };
+            
+            state.cart = [];
+            state.checkoutStep = 'confirmation';
+            render();
+        }
+
+        function renderCartSidebar() {
+            const cartTotal = getCartTotal();
+            const cartCount = getCartCount();
+            
+            return `
+                <div class="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-300 z-50 ${state.showCart ? 'translate-x-0 slide-in' : 'translate-x-full'}">
+                    <div class="h-full flex flex-col">
+                        <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                            <h2 class="text-2xl font-bold text-gray-800">Your Cart</h2>
+                            <button onclick="state.showCart = false; render();" class="p-2 hover:bg-gray-100 rounded-lg">✕</button>
+                        </div>
+                        
+                        ${state.cart.length === 0 ? `
+                            <div class="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                                <div class="text-6xl text-gray-300 mb-4">🛒</div>
+                                <p class="text-gray-500">Your cart is empty</p>
+                                <p class="text-sm text-gray-400 mt-2">Add some delicious meals to get started!</p>
+                            </div>
+                        ` : `
+                            <div class="flex-1 overflow-y-auto p-6 space-y-4">
+                                ${state.cart.map((item, index) => `
+                                    <div class="border border-gray-200 rounded-lg p-4">
+                                        <div class="flex gap-3">
+                                            <div class="text-4xl">${item.image}</div>
+                                            <div class="flex-1">
+                                                <h3 class="font-semibold text-gray-800">${item.name}</h3>
+                                                <p class="text-sm text-gray-600">$${item.price.toFixed(2)} each</p>
+                                                
+                                                ${Object.keys(item.customization || {}).filter(k => item.customization[k]).length > 0 ? `
+                                                    <div class="mt-2 mb-2">
+                                                        <p class="text-xs font-medium text-gray-700 mb-1">Customizations</p>
+                                                        <div class="flex flex-wrap gap-1">
+                                                            ${Object.entries(item.customization).filter(([k, v]) => v).map(([key]) => 
+                                                                `<span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded">${key}</span>`
+                                                            ).join('')}
+                                                        </div>
+                                                    </div>
+                                                ` : ''}
+                                                
+                                                ${item.comment ? `
+                                                    <div class="mt-2 mb-2">
+                                                        <p class="text-xs font-medium text-gray-700">Note</p>
+                                                        <p class="text-xs text-gray-600 italic">${item.comment}</p>
+                                                    </div>
+                                                ` : ''}
+                                                
+                                                <div class="flex items-center gap-2 mt-2">
+                                                    <button onclick="updateQuantity(${index}, ${item.quantity} - 1)" class="w-8 h-8 rounded-lg border border-gray-300 hover:bg-gray-100">-</button>
+                                                    <span class="w-12 text-center font-medium">${item.quantity}</span>
+                                                    <button onclick="updateQuantity(${index}, ${item.quantity} + 1)" class="w-8 h-8 rounded-lg border border-gray-300 hover:bg-gray-100">+</button>
+                                                    <button onclick="removeFromCart(${index})" class="ml-auto text-red-500 hover:text-red-700 text-sm">Remove</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2 text-right font-semibold text-gray-800">$${(item.price * item.quantity).toFixed(2)}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            
+                            <div class="border-t border-gray-200 p-6 space-y-4">
+                                <div class="flex justify-between items-center text-lg">
+                                    <span class="font-semibold">Subtotal</span>
+                                    <span class="font-bold text-green-600">$${cartTotal.toFixed(2)}</span>
+                                </div>
+                                <button onclick="proceedToCheckout()" class="w-full bg-green-600 text-white py-4 rounded-lg hover:bg-green-700 transition-colors font-semibold text-lg">Proceed to Checkout</button>
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderCheckout() {
+            const cartTotal = getCartTotal();
+            const deliveryFee = 4.99;
+            const tax = cartTotal * 0.10;
+            const total = cartTotal + deliveryFee + tax;
+            
+            if (state.checkoutStep === 'details') {
+                return `
+                    <div class="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
+                        <header class="bg-white shadow-sm">
+                            <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                                <div class="flex items-center gap-3">
+                                    <img src="buildyourbite.png" alt="BuildYourBite Logo" class="h-12 w-auto">
+                                    <h1 class="text-2xl font-bold text-gray-800">Checkout</h1>
+                                </div>
+                                <button onclick="state.checkoutStep = null; render();" class="text-gray-600 hover:text-gray-800">
+                                    ← Back to Menu
+                                </button>
+                            </div>
+                        </header>
+                        
+                        <main class="max-w-6xl mx-auto px-4 py-8">
+                            <div class="mb-8">
+                                <div class="flex items-center justify-center gap-4">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center font-bold">1</div>
+                                        <span class="font-medium text-green-600">Delivery Details</span>
+                                    </div>
+                                    <div class="w-16 h-1 bg-gray-300"></div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-full bg-gray-300 text-white flex items-center justify-center font-bold">2</div>
+                                        <span class="text-gray-500">Payment</span>
+                                    </div>
+                                    <div class="w-16 h-1 bg-gray-300"></div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-full bg-gray-300 text-white flex items-center justify-center font-bold">3</div>
+                                        <span class="text-gray-500">Confirmation</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="grid lg:grid-cols-3 gap-8">
+                                <div class="lg:col-span-2">
+                                    <div class="bg-white rounded-2xl shadow-lg p-8">
+                                        <h2 class="text-2xl font-bold text-gray-800 mb-6">Delivery Information</h2>
+                                        
+                                        <form onsubmit="event.preventDefault(); state.checkoutStep = 'payment'; render();" class="space-y-6">
+                                            <div class="grid md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value="${state.userProfile.name}"
+                                                        onchange="state.userProfile.name = this.value"
+                                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                                                        required
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number *</label>
+                                                    <input 
+                                                        type="tel" 
+                                                        value="${state.userProfile.phone}"
+                                                        onchange="state.userProfile.phone = this.value"
+                                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+                                            
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">Delivery Address *</label>
+                                                <textarea 
+                                                    onchange="state.orderDetails.deliveryAddress = this.value"
+                                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                                    rows="3"
+                                                    placeholder="Street address, apartment, suite, etc."
+                                                    required
+                                                >${state.orderDetails.deliveryAddress}</textarea>
+                                            </div>
+                                            
+                                            <div class="grid md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Delivery Date *</label>
+                                                    <input 
+                                                        type="date" 
+                                                        value="${state.orderDetails.deliveryDate}"
+                                                        onchange="state.orderDetails.deliveryDate = this.value"
+                                                        min="${new Date().toISOString().split('T')[0]}"
+                                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                                                        required
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Delivery Time *</label>
+                                                    <select 
+                                                        onchange="state.orderDetails.deliveryTime = this.value"
+                                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                                                        required
+                                                    >
+                                                        <option value="">Select time</option>
+                                                        <option value="9:00 AM - 11:00 AM">9:00 AM - 11:00 AM</option>
+                                                        <option value="11:00 AM - 1:00 PM">11:00 AM - 1:00 PM</option>
+                                                        <option value="1:00 PM - 3:00 PM">1:00 PM - 3:00 PM</option>
+                                                        <option value="3:00 PM - 5:00 PM">3:00 PM - 5:00 PM</option>
+                                                        <option value="5:00 PM - 7:00 PM">5:00 PM - 7:00 PM</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">Special Instructions</label>
+                                                <textarea 
+                                                    onchange="state.orderDetails.specialInstructions = this.value"
+                                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                                    rows="3"
+                                                    placeholder="Delivery instructions, gate codes, etc."
+                                                >${state.orderDetails.specialInstructions}</textarea>
+                                            </div>
+                                            
+                                            <button 
+                                                type="submit"
+                                                class="w-full px-8 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold text-lg"
+                                            >
+                                                Continue to Payment →
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                                
+                                <div class="lg:col-span-1">
+                                    <div class="bg-white rounded-2xl shadow-lg p-6 sticky top-4">
+                                        <h3 class="text-xl font-bold text-gray-800 mb-4">Order Summary</h3>
+                                        <div class="space-y-3 mb-4">
+                                            ${state.cart.map(item => `
+                                                <div class="flex justify-between text-sm">
+                                                    <span class="text-gray-600">${item.quantity}x ${item.name}</span>
+                                                    <span class="font-medium">$${(item.price * item.quantity).toFixed(2)}</span>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                        <div class="border-t pt-3 space-y-2">
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-gray-600">Subtotal</span>
+                                                <span>$${cartTotal.toFixed(2)}</span>
+                                            </div>
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-gray-600">Delivery Fee</span>
+                                                <span>$${deliveryFee.toFixed(2)}</span>
+                                            </div>
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-gray-600">Tax (10%)</span>
+                                                <span>$${tax.toFixed(2)}</span>
+                                            </div>
+                                            <div class="border-t pt-2 flex justify-between text-lg font-bold">
+                                                <span>Total</span>
+                                                <span class="text-green-600">$${total.toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                `;
+            } else if (state.checkoutStep === 'payment') {
+                return `
+                    <div class="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
+                        <header class="bg-white shadow-sm">
+                            <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                                <div class="flex items-center gap-3">
+                                    <img src="buildyourbite.png" alt="BuildYourBite Logo" class="h-12 w-auto">
+                                    <h1 class="text-2xl font-bold text-gray-800">Checkout</h1>
+                                </div>
+                                <button onclick="state.checkoutStep = 'details'; render();" class="text-gray-600 hover:text-gray-800">
+                                    ← Back
+                                </button>
+                            </div>
+                        </header>
+                        
+                        <main class="max-w-6xl mx-auto px-4 py-8">
+                            <div class="mb-8">
+                                <div class="flex items-center justify-center gap-4">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center font-bold">✓</div>
+                                        <span class="text-gray-500">Delivery Details</span>
+                                    </div>
+                                    <div class="w-16 h-1 bg-green-600"></div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center font-bold">2</div>
+                                        <span class="font-medium text-green-600">Payment</span>
+                                    </div>
+                                    <div class="w-16 h-1 bg-gray-300"></div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-full bg-gray-300 text-white flex items-center justify-center font-bold">3</div>
+                                        <span class="text-gray-500">Confirmation</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="grid lg:grid-cols-3 gap-8">
+                                <div class="lg:col-span-2">
+                                    <div class="bg-white rounded-2xl shadow-lg p-8">
+                                        <h2 class="text-2xl font-bold text-gray-800 mb-6">Payment Method</h2>
+                                        
+                                        <form onsubmit="event.preventDefault(); completeOrder();" class="space-y-6">
+                                            <div class="space-y-3">
+                                                <label class="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-green-500 transition-colors">
+                                                    <input 
+                                                        type="radio" 
+                                                        name="payment" 
+                                                        value="card"
+                                                        checked
+                                                        onchange="state.orderDetails.paymentMethod = this.value; render();"
+                                                        class="w-5 h-5 text-green-600"
+                                                    />
+                                                    <div class="flex-1">
+                                                        <div class="font-medium text-gray-800">💳 Credit / Debit Card</div>
+                                                        <div class="text-sm text-gray-500">Pay securely with your card</div>
+                                                    </div>
+                                                </label>
+                                                
+                                                <label class="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-green-500 transition-colors">
+                                                    <input 
+                                                        type="radio" 
+                                                        name="payment" 
+                                                        value="paypal"
+                                                        onchange="state.orderDetails.paymentMethod = this.value; render();"
+                                                        class="w-5 h-5 text-green-600"
+                                                    />
+                                                    <div class="flex-1">
+                                                        <div class="font-medium text-gray-800">🅿️ PayPal</div>
+                                                        <div class="text-sm text-gray-500">Pay with your PayPal account</div>
+                                                    </div>
+                                                </label>
+                                                
+                                                <label class="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-green-500 transition-colors">
+                                                    <input 
+                                                        type="radio" 
+                                                        name="payment" 
+                                                        value="cash"
+                                                        onchange="state.orderDetails.paymentMethod = this.value; render();"
+                                                        class="w-5 h-5 text-green-600"
+                                                    />
+                                                    <div class="flex-1">
+                                                        <div class="font-medium text-gray-800">💵 Cash on Delivery</div>
+                                                        <div class="text-sm text-gray-500">Pay when your order arrives</div>
+                                                    </div>
+                                                </label>
+                                            </div>
+                                            
+                                            ${state.orderDetails.paymentMethod === 'card' ? `
+                                                <div class="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                                    <div>
+                                                        <label class="block text-sm font-medium text-gray-700 mb-2">Card Number *</label>
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="1234 5678 9012 3456"
+                                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div class="grid grid-cols-2 gap-4">
+                                                        <div>
+                                                            <label class="block text-sm font-medium text-gray-700 mb-2">Expiry Date *</label>
+                                                            <input 
+                                                                type="text" 
+                                                                placeholder="MM/YY"
+                                                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                                                                required
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-sm font-medium text-gray-700 mb-2">CVV *</label>
+                                                            <input 
+                                                                type="text" 
+                                                                placeholder="123"
+                                                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                                                                required
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-sm font-medium text-gray-700 mb-2">Cardholder Name *</label>
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="Name on card"
+                                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                                                            required
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ` : ''}
+                                            
+                                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                                <div class="flex gap-3">
+                                                    <span class="text-2xl">🔒</span>
+                                                    <div>
+                                                        <h4 class="font-medium text-blue-900">Secure Payment</h4>
+                                                        <p class="text-sm text-blue-700">Your payment information is encrypted and secure</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <button 
+                                                type="submit"
+                                                class="w-full px-8 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold text-lg"
+                                            >
+                                                Complete Order - $${total.toFixed(2)}
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                                
+                                <div class="lg:col-span-1">
+                                    <div class="bg-white rounded-2xl shadow-lg p-6 sticky top-4">
+                                        <h3 class="text-xl font-bold text-gray-800 mb-4">Order Summary</h3>
+                                        <div class="space-y-3 mb-4">
+                                            ${state.cart.map(item => `
+                                                <div class="flex justify-between text-sm">
+                                                    <span class="text-gray-600">${item.quantity}x ${item.name}</span>
+                                                    <span class="font-medium">$${(item.price * item.quantity).toFixed(2)}</span>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                        <div class="border-t pt-3 space-y-2">
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-gray-600">Subtotal</span>
+                                                <span>$${cartTotal.toFixed(2)}</span>
+                                            </div>
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-gray-600">Delivery Fee</span>
+                                                <span>$${deliveryFee.toFixed(2)}</span>
+                                            </div>
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-gray-600">Tax (10%)</span>
+                                                <span>$${tax.toFixed(2)}</span>
+                                            </div>
+                                            <div class="border-t pt-2 flex justify-between text-lg font-bold">
+                                                <span>Total</span>
+                                                <span class="text-green-600">$${total.toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                `;
+            } else if (state.checkoutStep === 'confirmation') {
+                const order = state.lastOrder;
+                return `
+                    <div class="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
+                        <header class="bg-white shadow-sm">
+                            <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                                <div class="flex items-center gap-3">
+                                    <img src="buildyourbite.png" alt="BuildYourBite Logo" class="h-12 w-auto">
+                                    <h1 class="text-2xl font-bold text-gray-800">Order Confirmation</h1>
+                                </div>
+                            </div>
+                        </header>
+                        
+                        <main class="max-w-4xl mx-auto px-4 py-8">
+                            <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
+                                <div class="text-6xl mb-4">✅</div>
+                                <h2 class="text-3xl font-bold text-gray-800 mb-2">Order Confirmed!</h2>
+                                <p class="text-gray-600 mb-8">Thank you for your order. We'll prepare your delicious meals with care.</p>
+                                
+                                <div class="bg-green-50 border-2 border-green-200 rounded-lg p-6 mb-8">
+                                    <div class="text-sm text-gray-600 mb-2">Order Number</div>
+                                    <div class="text-2xl font-bold text-green-600">${order.orderNumber}</div>
+                                </div>
+                                
+                                <div class="grid md:grid-cols-2 gap-6 text-left mb-8">
+                                    <div class="bg-gray-50 rounded-lg p-6">
+                                        <h3 class="font-semibold text-gray-800 mb-3">📍 Delivery Details</h3>
+                                        <div class="space-y-2 text-sm text-gray-600">
+                                            <p><strong>Name:</strong> ${order.userInfo.name}</p>
+                                            <p><strong>Phone:</strong> ${order.userInfo.phone}</p>
+                                            <p><strong>Address:</strong> ${order.details.deliveryAddress}</p>
+                                            <p><strong>Date:</strong> ${order.details.deliveryDate}</p>
+                                            <p><strong>Time:</strong> ${order.details.deliveryTime}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="bg-gray-50 rounded-lg p-6">
+                                        <h3 class="font-semibold text-gray-800 mb-3">💳 Payment Details</h3>
+                                        <div class="space-y-2 text-sm text-gray-600">
+                                            <p><strong>Method:</strong> ${order.details.paymentMethod === 'card' ? 'Credit/Debit Card' : order.details.paymentMethod === 'paypal' ? 'PayPal' : 'Cash on Delivery'}</p>
+                                            <p><strong>Subtotal:</strong> $${order.orderTotal.toFixed(2)}</p>
+                                            <p><strong>Delivery Fee:</strong> $${order.deliveryFee.toFixed(2)}</p>
+                                            <p><strong>Tax:</strong> $${order.tax.toFixed(2)}</p>
+                                            <p class="text-lg font-bold text-green-600"><strong>Total:</strong> $${order.total.toFixed(2)}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-gray-50 rounded-lg p-6 mb-8 text-left">
+                                    <h3 class="font-semibold text-gray-800 mb-3">🍽️ Your Order</h3>
+                                    <div class="space-y-2">
+                                        ${order.items.map(item => `
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-gray-600">${item.quantity}x ${item.name}</span>
+                                                <span class="font-medium">$${(item.price * item.quantity).toFixed(2)}</span>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
+                                    <div class="flex gap-3 text-left">
+                                        <span class="text-2xl">📧</span>
+                                        <div>
+                                            <h4 class="font-medium text-blue-900">Confirmation Email Sent</h4>
+                                            <p class="text-sm text-blue-700">We've sent a confirmation email to ${order.userInfo.email} with your order details.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex gap-4 justify-center">
+                                    <button 
+                                        onclick="state.checkoutStep = null; render();"
+                                        class="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
+                                    >
+                                        Order More Meals
+                                    </button>
+                                    <button 
+                                        onclick="window.print()"
+                                        class="px-8 py-3 border-2 border-green-600 text-green-600 rounded-lg hover:bg-green-50 transition-colors font-semibold"
+                                    >
+                                        Print Receipt
+                                    </button>
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                `;
+            }
+        }
+
+        function renderMealDetail() {
+            const meal = meals.find(m => m.id === state.selectedMeal);
+            const cartTotal = getCartTotal();
+            const cartCount = getCartCount();
+            
+            return `
+                <div class="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
+                    ${state.showCart ? `<div class="fixed inset-0 bg-black bg-opacity-50 z-40" onclick="state.showCart = false; render();"></div>` : ''}
+                    ${renderCartSidebar()}
+                    
+                    <header class="bg-white shadow-sm sticky top-0 z-30">
+                        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                            <button onclick="state.selectedMeal = null; render();" class="flex items-center gap-2 text-gray-700 hover:text-green-600 transition-colors">
+                                <span>←</span>
+                                <span class="font-medium">Back to Menu</span>
+                            </button>
+                            
+                            <button onclick="state.showCart = true; render();" class="relative flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                🛒
+                                ${cartCount > 0 ? `<span class="absolute -top-2 -right-2 bg-green-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">${cartCount}</span>` : ''}
+                                <span class="hidden sm:inline">$${cartTotal.toFixed(2)}</span>
+                            </button>
+                        </div>
+                    </header>
+                    
+                    <main class="max-w-6xl mx-auto px-4 py-8">
+                        <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                            <div class="bg-gradient-to-br from-green-100 to-emerald-100 p-12 text-center">
+                                <div class="text-9xl mb-4">${meal.image}</div>
+                                <h1 class="text-4xl font-bold text-gray-800 mb-2">${meal.name}</h1>
+                                <p class="text-xl text-gray-600 mb-4">${meal.description}</p>
+                                <div class="flex justify-center gap-6 text-lg">
+                                    <span><strong>${meal.calories}</strong> calories</span>
+                                    <span><strong>${meal.protein}</strong> protein</span>
+                                    <span class="text-green-600 font-bold">$${meal.price.toFixed(2)}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="p-8 space-y-8">
+                                <section>
+                                    <h2 class="text-2xl font-bold text-gray-800 mb-3">📖 About This Meal</h2>
+                                    <p class="text-gray-700 leading-relaxed text-lg">${meal.fullDescription}</p>
+                                </section>
+                                
+                                <section>
+                                    <h2 class="text-2xl font-bold text-gray-800 mb-3">🏷️ Dietary Information</h2>
+                                    <div class="flex flex-wrap gap-3">
+                                        ${meal.tags.map(tag => {
+                                            const filter = dietaryFilters.find(f => f.id === tag);
+                                            return `
+                                                <div class="px-4 py-2 bg-green-100 text-green-800 rounded-lg font-medium flex items-center gap-2">
+                                                    <span class="text-xl">${filter?.icon}</span>
+                                                    <span>${filter?.label}</span>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                </section>
+                                
+                                <section>
+                                    <h2 class="text-2xl font-bold text-gray-800 mb-3">🥬 Ingredients</h2>
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                        ${meal.ingredients.map(ing => 
+                                            `<div class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-center">${ing}</div>`
+                                        ).join('')}
+                                    </div>
+                                </section>
+                                
+                                <section>
+                                    <h2 class="text-2xl font-bold text-gray-800 mb-3">✨ Customize Your Meal</h2>
+                                    <div class="grid md:grid-cols-2 gap-3">
+                                        ${meal.customizations.map((option, idx) => `
+                                            <label class="flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-green-500 transition-colors">
+                                                <input 
+                                                    type="checkbox" 
+                                                    id="custom-${meal.id}-${idx}"
+                                                    onchange="toggleCustomization(${meal.id}, '${option}'); render();"
+                                                    class="w-5 h-5 text-green-600 rounded"
+                                                />
+                                                <span class="text-gray-800 font-medium">${option}</span>
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                </section>
+                                
+                                <section>
+                                    <h2 class="text-2xl font-bold text-gray-800 mb-3">💬 Special Instructions</h2>
+                                    <textarea 
+                                        id="comment-${meal.id}"
+                                        onchange="state.mealComments[${meal.id}] = this.value;"
+                                        placeholder="Any allergies, preferences, or special requests?"
+                                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-gray-800 focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                                        rows="4"
+                                    ></textarea>
+                                </section>
+                                
+                                <section class="border-t pt-6">
+                                    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                                        <div class="flex items-center gap-4">
+                                            <span class="text-lg font-semibold text-gray-800">Quantity</span>
+                                            <button onclick="state.mealQuantity = Math.max(1, state.mealQuantity - 1); render();" class="w-10 h-10 rounded-lg border-2 border-gray-300 hover:bg-gray-100 text-xl font-semibold">-</button>
+                                            <span class="w-16 text-center text-2xl font-bold text-gray-800">${state.mealQuantity}</span>
+                                            <button onclick="state.mealQuantity++; render();" class="w-10 h-10 rounded-lg border-2 border-gray-300 hover:bg-gray-100 text-xl font-semibold">+</button>
+                                        </div>
+                                        <button 
+                                            onclick="addToCart(${meal.id}, true)"
+                                            class="w-full md:w-auto px-8 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold text-lg flex items-center justify-center gap-3"
+                                        >
+                                            🛒 Add ${state.mealQuantity} to Cart - $${(meal.price * state.mealQuantity).toFixed(2)}
+                                        </button>
+                                    </div>
+                                </section>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            `;
+        }
+
+        function renderSignUp() {
+            return `
+                <div class="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center p-4">
+                    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8">
+                        <div class="text-center mb-8">
+                            <img src="buildyourbite.png" alt="BuildYourBite Logo" class="mx-auto mb-4 max-w-md w-full">
+                            <h1 class="text-3xl font-bold text-gray-800 mb-2">BuildYourBite</h1>
+                            <p class="text-gray-600">Let's customize your meal plan based on your dietary needs</p>
+                        </div>
+                        
+                        <form onsubmit="event.preventDefault(); if(state.userProfile.name && state.userProfile.email) { state.isSignedUp = true; state.selectedDiets = [...state.userProfile.diets]; state.showSignUp = false; render(); }" class="space-y-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Your Name</label>
+                                <input 
+                                    type="text" 
+                                    onchange="state.userProfile.name = this.value"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                                    placeholder="Enter your name"
+                                    required
+                                />
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                                <input 
+                                    type="email" 
+                                    onchange="state.userProfile.email = this.value"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                                    placeholder="your@email.com"
+                                    required
+                                />
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-3">Dietary Preferences & Restrictions</label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    ${dietaryFilters.map(filter => `
+                                        <button 
+                                            type="button"
+                                            onclick="toggleDiet('${filter.id}'); render();"
+                                            class="p-3 rounded-lg border-2 text-left transition-all ${
+                                                state.userProfile.diets.includes(filter.id) 
+                                                    ? 'border-green-500 bg-green-50' 
+                                                    : 'border-gray-200 hover:border-gray-300'
+                                            } cursor-pointer"
+                                        >
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-2xl">${filter.icon}</span>
+                                                <span class="text-sm font-medium text-gray-700">${filter.label}</span>
+                                                ${state.userProfile.diets.includes(filter.id) ? '<span class="ml-auto text-green-600">✓</span>' : ''}
+                                            </div>
+                                        </button>
+                                    `).join('')}
+                                </div>
+                                <p class="text-xs text-gray-500 mt-2">Select all that apply to you</p>
+                            </div>
+                            
+                            <div class="flex gap-3">
+                                <button 
+                                    type="button"
+                                    onclick="state.showSignUp = false; render();"
+                                    class="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                                >Cancel</button>
+                                <button 
+                                    type="submit"
+                                    class="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                                >Save & Continue</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderMainPage() {
+            const filteredMeals = getFilteredMeals();
+            const cartTotal = getCartTotal();
+            const cartCount = getCartCount();
+            
+            return `
+                <div class="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
+                    ${state.showCart ? `<div class="fixed inset-0 bg-black bg-opacity-50 z-40" onclick="state.showCart = false; render();"></div>` : ''}
+                    ${renderCartSidebar()}
+                    
+                    <header class="bg-white shadow-sm sticky top-0 z-30">
+                        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <img src="buildyourbite.png" alt="BuildYourBite Logo" class="h-12 w-auto">
+                                <div>
+                                    <h1 class="text-2xl font-bold text-gray-800">BuildYourBite</h1>
+                                    <p class="text-sm text-gray-600">Customized for your dietary needs</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center gap-4">
+                                ${!state.isSignedUp ? `
+                                    <button onclick="state.showSignUp = true; render();" class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                        <span>👤</span>
+                                        <span>Sign Up</span>
+                                    </button>
+                                ` : ''}
+                                
+                                <button onclick="state.showCart = true; render();" class="relative flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                    🛒
+                                    ${cartCount > 0 ? `<span class="absolute -top-2 -right-2 bg-green-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">${cartCount}</span>` : ''}
+                                    <span class="hidden sm:inline">$${cartTotal.toFixed(2)}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+                    
+                    ${!state.isSignedUp ? `
+                        <section class="bg-gradient-to-r from-green-600 to-emerald-600 text-white py-16">
+                            <div class="max-w-7xl mx-auto px-4 text-center">
+                                <h2 class="text-4xl font-bold mb-4">Delicious Meals, Perfectly Personalized</h2>
+                                <p class="text-xl mb-8 text-green-50">Sign up to specify your dietary preferences and see personalized meal recommendations</p>
+                                
+                                <div class="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                                    <div class="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6">
+                                        <div class="text-4xl mb-3">🌾</div>
+                                        <h3 class="font-semibold mb-2">Allergen-Free Options</h3>
+                                        <p class="text-sm text-green-50">Filter out gluten, soy, nuts, and other allergens</p>
+                                    </div>
+                                    <div class="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6">
+                                        <div class="text-4xl mb-3">💚</div>
+                                        <h3 class="font-semibold mb-2">Health-Focused</h3>
+                                        <p class="text-sm text-green-50">Vegan, vegetarian, and specialty diet options</p>
+                                    </div>
+                                    <div class="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6">
+                                        <div class="text-4xl mb-3">✨</div>
+                                        <h3 class="font-semibold mb-2">Fully Customized</h3>
+                                        <p class="text-sm text-green-50">Only see meals that match your needs</p>
+                                    </div>
+                                </div>
+                                
+                                <button onclick="state.showSignUp = true; render();" class="mt-8 px-8 py-4 bg-white text-green-600 rounded-lg hover:bg-green-50 transition-colors font-semibold text-lg">
+                                    Get Started →
+                                </button>
+                            </div>
+                        </section>
+                    ` : ''}
+                    
+                    <main class="max-w-7xl mx-auto px-4 py-8">
+                        ${state.isSignedUp ? `
+                            <div class="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+                                <p class="text-green-800 font-medium">👋 Welcome back, ${state.userProfile.name}! Showing meals that match your profile</p>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="mb-8">
+                            <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+                                <button 
+                                    onclick="state.selectedCategory = 'all'; render();" 
+                                    class="px-6 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${state.selectedCategory === 'all' ? 'bg-green-600 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}"
+                                >All Meals</button>
+                                <button 
+                                    onclick="state.selectedCategory = 'bowls'; render();" 
+                                    class="px-6 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${state.selectedCategory === 'bowls' ? 'bg-green-600 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}"
+                                >🥗 Bowls</button>
+                                <button 
+                                    onclick="state.selectedCategory = 'plant-based'; render();" 
+                                    class="px-6 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${state.selectedCategory === 'plant-based' ? 'bg-green-600 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}"
+                                >🌱 Plant-Based</button>
+                                <button 
+                                    onclick="state.selectedCategory = 'meat'; render();" 
+                                    class="px-6 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${state.selectedCategory === 'meat' ? 'bg-green-600 text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}"
+                                >🍖 Meat</button>
+                            </div>
+                            
+                            <button 
+                                onclick="state.showFilters = !state.showFilters; render();" 
+                                class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors mb-4"
+                            >
+                                🔍 ${state.showFilters ? 'Hide' : 'Show'} Dietary Filters
+                            </button>
+                            
+                            ${state.showFilters ? `
+                                <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+                                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                                        ${dietaryFilters.map(filter => `
+                                            <button 
+                                                onclick="toggleDietFilter('${filter.id}'); render();"
+                                                class="p-3 rounded-lg border-2 text-left transition-all ${
+                                                    state.selectedDiets.includes(filter.id) 
+                                                        ? 'border-green-500 bg-green-50' 
+                                                        : 'border-gray-200 hover:border-gray-300'
+                                                } cursor-pointer"
+                                            >
+                                                <div class="flex flex-col gap-1">
+                                                    <span class="text-2xl">${filter.icon}</span>
+                                                    <span class="text-xs font-medium text-gray-700">${filter.label}</span>
+                                                    ${state.selectedDiets.includes(filter.id) ? '<span class="text-green-600">✓</span>' : ''}
+                                                </div>
+                                            </button>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <p class="text-center text-gray-600 mb-8">
+                            ${state.selectedCategory === 'all' 
+                                ? 'Browse our full menu of delicious meals' 
+                                : state.selectedCategory === 'bowls' 
+                                    ? 'Fresh grain bowls and vegetable-based classics'
+                                    : state.selectedCategory === 'plant-based'
+                                        ? 'Plant-based proteins that satisfy like meat'
+                                        : 'Premium meat dishes for protein lovers'
+                            }
+                        </p>
+                        
+                        ${filteredMeals.length === 0 ? `
+                            <div class="text-center py-16 bg-white rounded-lg shadow-sm">
+                                <p class="text-xl text-gray-600 mb-2">No meals match your current filters.</p>
+                                <p class="text-gray-500">Try adjusting your dietary preferences above.</p>
+                            </div>
+                        ` : `
+                            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                ${filteredMeals.map(meal => `
+                                    <div class="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-200 overflow-hidden">
+                                        <div class="p-6">
+                                            <div class="text-6xl mb-4 text-center">${meal.image}</div>
+                                            <h3 class="text-xl font-bold text-gray-800 mb-2">${meal.name}</h3>
+                                            <p class="text-gray-600 text-sm mb-4">${meal.description}</p>
+                                            
+                                            <div class="flex gap-4 text-sm text-gray-600 mb-4">
+                                                <span>${meal.calories} cal</span>
+                                                <span>${meal.protein} protein</span>
+                                            </div>
+                                            
+                                            <div class="flex flex-wrap gap-2 mb-4">
+                                                ${meal.tags.slice(0, 3).map(tag => {
+                                                    const filter = dietaryFilters.find(f => f.id === tag);
+                                                    return `<span class="px-2 py-1 bg-green-50 text-green-700 text-xs rounded-full">${filter?.label}</span>`;
+                                                }).join('')}
+                                                ${meal.tags.length > 3 ? `<span class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">+${meal.tags.length - 3} more</span>` : ''}
+                                            </div>
+                                            
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-2xl font-bold text-green-600">$${meal.price.toFixed(2)}</span>
+                                                <div class="flex gap-2">
+                                                    <button 
+                                                        onclick="state.selectedMeal = ${meal.id}; render();" 
+                                                        class="px-4 py-2 border border-green-600 text-green-600 rounded-lg hover:bg-green-50 transition-colors text-sm font-medium"
+                                                    >View Details</button>
+                                                    <button 
+                                                        onclick="addToCart(${meal.id})" 
+                                                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                                                    >
+                                                        🛒 Add
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `}
+                    </main>
+                    
+                    <footer class="bg-white mt-16 border-t border-gray-200">
+                        <div class="max-w-7xl mx-auto px-4 py-8 text-center text-gray-600">
+                            <p class="mb-2">🍽️ BuildYourBite - Delicious meals, customized for you</p>
+                            <p class="text-sm text-gray-500">All meals are prepared fresh daily with quality ingredients</p>
+                        </div>
+                    </footer>
+                </div>
+            `;
+        }
+
+        function render() {
+            const app = document.getElementById('app');
+            
+            if (state.checkoutStep) {
+                app.innerHTML = renderCheckout();
+            } else if (state.selectedMeal) {
+                app.innerHTML = renderMealDetail();
+            } else if (state.showSignUp) {
+                app.innerHTML = renderSignUp();
+            } else {
+                app.innerHTML = renderMainPage();
+            }
+        }
+
+        // Initial render
+        render();
+    </script>
+</body>
+</html>
